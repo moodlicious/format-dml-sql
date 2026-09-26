@@ -27,7 +27,8 @@
         "@types/bun": "latest",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "daisyui": "^5.7.46"
+        "daisyui": "^5.7.46",
+        "monaco-editor": "^0.57.0"
     },
     "peerDependencies": {
         "typescript": "^7"

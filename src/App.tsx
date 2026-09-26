@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import "./index.css";
-import Editor, { DiffEditor, type EditorProps } from "@monaco-editor/react";
+import Editor, {
+    type BeforeMount,
+    DiffEditor,
+    type DiffEditorProps,
+    type EditorProps,
+} from "@monaco-editor/react";
 import { useDebounce, useLocalStorage } from "@uidotdev/usehooks";
+import type { editor } from "monaco-editor/editor";
 import prettier from "prettier/standalone";
 import SqlPlugin from "prettier-plugin-sql";
 import { twMerge } from "tailwind-merge";
+import type { IntersectionOfTypes } from "./types";
 
 const MDL_TABLE_PREFIX = "__MDL_PREFIX__";
 const MDL_TABLE_SUFFIX = "__MDL_SUFFIX__";
@@ -43,6 +50,23 @@ const format = async (value: string) => {
     return value;
 };
 
+const TRANSPARENT_THEME = "transparent";
+
+type MonacoEditor = typeof editor;
+const handleBeforeMount: BeforeMount = (monaco) => {
+    const editor: MonacoEditor = monaco.editor;
+    editor.defineTheme(TRANSPARENT_THEME, {
+        base: "vs-dark",
+        inherit: true,
+        rules: [],
+        colors: {
+            "editor.background": "#00000000",
+            "editorGutter.background": "#00000000",
+            "minimap.background": "#00000000",
+        },
+    });
+};
+
 const EDITOR_OPTIONS: EditorProps["options"] = {
     renderLineHighlight: "all",
     renderWhitespace: "all",
@@ -61,6 +85,13 @@ const EDITOR_OPTIONS: EditorProps["options"] = {
         showSlider: "mouseover",
         renderCharacters: false,
     },
+};
+
+const EDITOR_PROPS: IntersectionOfTypes<EditorProps, DiffEditorProps> = {
+    className: "overflow-hidden rounded bg-base-200/50",
+    language: "sql",
+    theme: TRANSPARENT_THEME,
+    options: EDITOR_OPTIONS,
 };
 
 export function App() {
@@ -84,8 +115,8 @@ export function App() {
     }, [debouncedSQL]);
 
     return (
-        <div className="grid h-screen max-h-screen grid-rows-[auto_1fr] gap-2 p-2">
-            <div className="flex items-center justify-between rounded bg-base-200 px-2 py-1">
+        <div className="grid h-screen max-h-screen grid-rows-[auto_1fr] gap-2 bg-base-100 p-2">
+            <div className="flex items-center justify-between rounded bg-base-200/50 px-2 py-1">
                 <div className="flex items-center gap-3">
                     <h1 className="font-semibold">DML SQL Formatter</h1>
                     <span
@@ -110,31 +141,24 @@ export function App() {
                 {!diff ? (
                     <div className="grid h-full grid-cols-2 gap-2">
                         <Editor
-                            className="overflow-hidden rounded"
-                            language="sql"
-                            theme="vs-dark"
+                            {...EDITOR_PROPS}
                             value={sql}
                             onChange={onChange}
-                            options={EDITOR_OPTIONS}
+                            beforeMount={handleBeforeMount}
                         />
                         <Editor
-                            className="overflow-hidden rounded"
-                            language="sql"
-                            theme="vs-dark"
+                            {...EDITOR_PROPS}
                             value={formatted}
                             options={{ readOnly: true, ...EDITOR_OPTIONS }}
                         />
                     </div>
                 ) : (
                     <DiffEditor
-                        className="overflow-hidden rounded"
-                        language="sql"
-                        theme="vs-dark"
+                        {...EDITOR_PROPS}
                         original={sql}
                         modified={formatted}
                         keepCurrentOriginalModel
                         keepCurrentModifiedModel
-                        options={EDITOR_OPTIONS}
                     />
                 )}
             </div>
