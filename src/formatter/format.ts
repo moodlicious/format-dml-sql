@@ -19,6 +19,52 @@ export const denormaliseTableNames = (value: string) => {
         .replaceAll(MDL_TABLE_SUFFIX, "}");
 };
 
+/**
+ * A hacky fix to align case when statements.
+ * AND and OR conditions are known to break formatting.
+ * @todo support AND and OR keywords
+ */
+const fixCaseWhen = (value: string) => {
+    const lines = value.split("\n");
+
+    let fixing = false;
+    let currentIndent = 0;
+    let skipFirstWhenIndent = false;
+    const fixKeywords = ["WHEN", "ELSE"];
+
+    lines.forEach((line, i, lines) => {
+        if (line.trimStart() === "CASE") {
+            fixing = true;
+            currentIndent = line.indexOf("CASE") + "CASE ".length;
+            skipFirstWhenIndent = true;
+            return;
+        }
+
+        if (line.trimStart().startsWith("END")) {
+            fixing = false;
+            return;
+        }
+
+        if (!fixing) return;
+
+        const currentKeyword = fixKeywords.find((keyword) =>
+            line.trimStart().startsWith(keyword),
+        );
+        if (!currentKeyword) return;
+
+        if (skipFirstWhenIndent) {
+            line = line.trimStart();
+            skipFirstWhenIndent = false;
+        } else {
+            line = " ".repeat(currentIndent) + line.trimStart();
+        }
+        lines[i] = line;
+        return;
+    });
+
+    return lines.join("\n").replaceAll("CASE\nWHEN", "CASE WHEN");
+};
+
 export const indentKeywords = (value: string, keywords: string[]) => {
     keywords = keywords.map((keyword) => `${keyword} `);
     return value
@@ -65,6 +111,7 @@ export const format = async (value: string) => {
         error instanceof Error ? error.message : "Something went wrong",
     );
     value = denormaliseTableNames(value);
+    value = fixCaseWhen(value);
     value = indentKeywords(value, ["AND", "OR"]);
     value = dedentStatements(value);
     return value;
