@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { denormaliseTableNames, format, normaliseTableNames } from "./format";
+import {
+    dedentStatements,
+    denormaliseTableNames,
+    format,
+    indentKeywords,
+    normaliseTableNames,
+    STATEMENT_SEPARATOR,
+} from "./format";
 
 describe("normaliseTableNames", () => {
     it("should normalise one table name", () => {
@@ -78,14 +85,97 @@ describe("denormaliseTableNames(normaliseTableNames())", () => {
     );
 });
 
+describe("indentKeywords", () => {
+    it("should prepend spaces equal to keyword length (plus 1 space) for lines starting with a keyword", () => {
+        const input = "SELECT * FROM users;\nWHERE id = 1;";
+        const keywords = ["SELECT", "WHERE"];
+        // "SELECT " length is 7, "WHERE " length is 6
+        const expected = "       SELECT * FROM users;\n      WHERE id = 1;";
+
+        expect(indentKeywords(input, keywords)).toBe(expected);
+    });
+
+    it("should respect leading whitespace when checking for keywords and preserve it", () => {
+        const input = "  SELECT * FROM users;";
+        const keywords = ["SELECT"];
+        // Prepends 7 spaces before the original 2 spaces
+        const expected = "         SELECT * FROM users;";
+
+        expect(indentKeywords(input, keywords)).toBe(expected);
+    });
+
+    it("should ignore lines that do not start with any specified keyword", () => {
+        const input = "FROM users\nORDER BY id;";
+        const keywords = ["SELECT", "WHERE"];
+
+        expect(indentKeywords(input, keywords)).toBe(input);
+    });
+
+    it("should match only the first matching keyword per line", () => {
+        const input = "SELECT WHERE 1=1;";
+        const keywords = ["SELECT", "WHERE"];
+        // Only "SELECT " (length 7) triggers
+        const expected = "       SELECT WHERE 1=1;";
+
+        expect(indentKeywords(input, keywords)).toBe(expected);
+    });
+
+    it("should not match if the keyword is not followed by a space", () => {
+        const input = "SELECTION * FROM users;";
+        const keywords = ["SELECT"];
+
+        expect(indentKeywords(input, keywords)).toBe(input);
+    });
+
+    it("should return empty string unmodified when given empty input", () => {
+        expect(indentKeywords("", ["SELECT"])).toBe("");
+    });
+});
+
+describe("dedentStatements", () => {
+    it("should dedent multi-line queries relative to the minimum common indentation", () => {
+        const input = `    SELECT *\n    FROM users\n      WHERE id = 1;`;
+        const expected = `SELECT *\nFROM users\n  WHERE id = 1;`;
+
+        expect(dedentStatements(input)).toBe(expected);
+    });
+
+    it("should treat queries separated by ';\\n\\n\\n' independently", () => {
+        const input = [
+            "    SELECT * FROM table1;",
+            "        SELECT * FROM table2;",
+        ].join(STATEMENT_SEPARATOR);
+
+        const expected = [
+            "SELECT * FROM table1;",
+            "SELECT * FROM table2;",
+        ].join(STATEMENT_SEPARATOR);
+
+        expect(dedentStatements(input)).toBe(expected);
+    });
+
+    it("should handle empty lines within a query without breaking min space calculation", () => {
+        const input = `    SELECT *\n\n    FROM users;`;
+        // Line 2 is empty, so line.search(/\S|$/) returns 0, resulting in 0 dedent
+        const expected = `    SELECT *\n\n    FROM users;`;
+
+        expect(dedentStatements(input)).toBe(expected);
+    });
+
+    it("should handle single-line queries without modification", () => {
+        const input = "SELECT * FROM users;";
+        expect(dedentStatements(input)).toBe(input);
+    });
+});
+
 describe("format", async () => {
     it.each([
         {
             complexity: "low",
             original: "SELECT * from {user}",
             formatted: `
-   SELECT *
-     FROM {user}
+SELECT *
+  FROM {user}
     `,
         },
         {
@@ -94,12 +184,12 @@ describe("format", async () => {
                             JOIN {course_completions} cc on cc.userid = u.id
                             join {course} c on cc.course = c.id`,
             formatted: `
-   SELECT u.firstname,
-          u.lastname,
-          u.username
-     FROM {user} u
-     JOIN {course_completions} cc ON cc.userid = u.id
-     JOIN {course} c ON cc.course = c.id
+SELECT u.firstname,
+       u.lastname,
+       u.username
+  FROM {user} u
+  JOIN {course_completions} cc ON cc.userid = u.id
+  JOIN {course} c ON cc.course = c.id
     `,
         },
         {
