@@ -28,7 +28,7 @@ export const format = async (value: string) => {
         keywordCase: "upper",
         linesBetweenQueries: 3,
         newlineBeforeSemicolon: true,
-        paramTypes: '{ named: [":"] }',
+        paramTypes: '{ named: [":", "$"] }',
     }).catch((error) =>
         error instanceof Error ? error.message : "Something went wrong",
     );
