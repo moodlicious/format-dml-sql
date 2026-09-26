@@ -81,14 +81,100 @@ describe("denormaliseTableNames(normaliseTableNames())", () => {
 describe("format", async () => {
     it.each([
         {
+            complexity: "low",
             original: "SELECT * from {user}",
             formatted: `
    SELECT *
      FROM {user}
     `,
         },
+        {
+            complexity: "medium",
+            original: `SELECT u.firstname, u.lastname, u.username from {user} u
+                            JOIN {course_completions} cc on cc.userid = u.id
+                            join {course} c on cc.course = c.id`,
+            formatted: `
+   SELECT u.firstname,
+          u.lastname,
+          u.username
+     FROM {user} u
+     JOIN {course_completions} cc ON cc.userid = u.id
+     JOIN {course} c ON cc.course = c.id
+    `,
+        },
+        {
+            complexity: "high",
+            original: `SELECT
+    u.id AS user_id,
+    u.username,
+    u.first_name,
+    u.last_name,
+    COUNT(DISTINCT r.id) AS review_count,
+    COUNT(DISTINCT m.id) AS movie_count,
+    ROUND(AVG(r.rating), 2) AS average_rating,
+    SUM(r.likes) AS total_likes,
+    CASE
+        WHEN AVG(r.rating) >= 8 THEN 'Excellent'
+        WHEN AVG(r.rating) >= 6 THEN 'Good'
+        ELSE 'Average'
+    END AS reviewer_category
+FROM {users} u
+JOIN {reviews} r
+      ON r.user_id = u.id
+JOIN {movies} m
+      ON m.id = r.movie_id
+LEFT JOIN {genres} g
+      ON g.id = m.genre_id
+             JOIN {fake123_table} ft ON u.id = ft.userid AND m.id = ft.movieid
+WHERE
+    u.status = 'active'
+    AND u.deleted_at IS NULL
+GROUP BY
+    u.id,
+    u.username,
+    u.first_name,
+    u.last_name
+HAVING
+    COUNT(DISTINCT r.id) >= 3
+    AND AVG(r.rating) >= 6
+ORDER BY
+    average_rating DESC,
+    total_likes DESC,
+    u.username ASC`,
+            formatted: `
+   SELECT u.id AS user_id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          COUNT(DISTINCT r.id) AS review_count,
+          COUNT(DISTINCT m.id) AS movie_count,
+          ROUND(AVG(r.rating), 2) AS average_rating,
+          SUM(r.likes) AS total_likes,
+          CASE WHEN AVG(r.rating) >= 8 THEN 'Excellent'
+               WHEN AVG(r.rating) >= 6 THEN 'Good'
+               ELSE 'Average'
+          END AS reviewer_category
+     FROM {users} u
+     JOIN {reviews} r ON r.user_id = u.id
+     JOIN {movies} m ON m.id = r.movie_id
+LEFT JOIN {genres} g ON g.id = m.genre_id
+     JOIN {fake123_table} ft ON u.id = ft.userid
+          AND m.id = ft.movieid
+    WHERE u.status = 'active'
+          AND u.deleted_at IS NULL
+ GROUP BY u.id,
+          u.username,
+          u.first_name,
+          u.last_name
+   HAVING COUNT(DISTINCT r.id) >= 3
+          AND AVG(r.rating) >= 6
+ ORDER BY average_rating DESC,
+          total_likes DESC,
+          u.username ASC
+`,
+        },
     ])(
-        "should correct format SQLs into Moodle coding style format",
+        "should correct format SQLs into Moodle coding style format (complexity $complexity)",
         async ({ original, formatted }) => {
             expect(await format(original).then((f) => f.trim())).toEqual(
                 formatted.trim(),
