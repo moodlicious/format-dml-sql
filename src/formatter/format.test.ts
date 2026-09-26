@@ -202,7 +202,12 @@ SELECT u.firstname,
     COUNT(DISTINCT r.id) AS review_count,
     COUNT(DISTINCT m.id) AS movie_count,
     ROUND(AVG(r.rating), 2) AS average_rating,
-    SUM(r.likes) AS total_likes
+    SUM(r.likes) AS total_likes,
+    CASE
+        WHEN AVG(r.rating) >= 8 THEN 'Excellent'
+        WHEN AVG(r.rating) >= 6 THEN 'Good'
+        ELSE 'Average'
+    END AS reviewer_category
 FROM {users} u
 JOIN {reviews} r
       ON r.user_id = u.id
@@ -234,7 +239,11 @@ ORDER BY
           COUNT(DISTINCT r.id) AS review_count,
           COUNT(DISTINCT m.id) AS movie_count,
           ROUND(AVG(r.rating), 2) AS average_rating,
-          SUM(r.likes) AS total_likes
+          SUM(r.likes) AS total_likes,
+          CASE WHEN AVG(r.rating) >= 8 THEN 'Excellent'
+               WHEN AVG(r.rating) >= 6 THEN 'Good'
+               ELSE 'Average'
+          END AS reviewer_category
      FROM {users} u
      JOIN {reviews} r ON r.user_id = u.id
      JOIN {movies} m ON m.id = r.movie_id
