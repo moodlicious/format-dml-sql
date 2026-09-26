@@ -8,47 +8,9 @@ import Editor, {
 } from "@monaco-editor/react";
 import { useDebounce, useLocalStorage } from "@uidotdev/usehooks";
 import type { editor } from "monaco-editor/editor";
-import prettier from "prettier/standalone";
-import SqlPlugin from "prettier-plugin-sql";
 import { twMerge } from "tailwind-merge";
+import { format } from "./formatter/format";
 import type { IntersectionOfTypes } from "./types";
-
-const MDL_TABLE_PREFIX = "__MDL_PREFIX__";
-const MDL_TABLE_SUFFIX = "__MDL_SUFFIX__";
-
-const normaliseTableNames = (value: string) => {
-    return value.replace(
-        /\{([0-9A-Za-z_]+)\}/g,
-        `${MDL_TABLE_PREFIX}$1${MDL_TABLE_SUFFIX}`,
-    );
-};
-
-const denormaliseTableNames = (value: string) => {
-    return value
-        .replaceAll(MDL_TABLE_PREFIX, "{")
-        .replaceAll(MDL_TABLE_SUFFIX, "}");
-};
-
-const format = async (value: string) => {
-    value = normaliseTableNames(value);
-    value = await prettier
-        .format(value, {
-            parser: "sql",
-            plugins: [SqlPlugin],
-            dataTypeCase: "upper",
-            functionCase: "upper",
-            indentStyle: "tabularRight",
-            keywordCase: "upper",
-            linesBetweenQueries: 3,
-            newlineBeforeSemicolon: true,
-            paramTypes: '{ named: [":"] }',
-        })
-        .catch((error) =>
-            error instanceof Error ? error.message : "Something went wrong",
-        );
-    value = denormaliseTableNames(value);
-    return value;
-};
 
 const TRANSPARENT_THEME = "transparent";
 

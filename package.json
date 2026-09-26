@@ -9,6 +9,7 @@
         "lint:tsc": "tsc --noEmit",
         "lint:biome": "biome check",
         "lint": "bun run --sequential 'lint:*'",
+        "test": "bun test",
         "build": "bun run build.ts"
     },
     "dependencies": {
