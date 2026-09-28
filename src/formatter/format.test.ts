@@ -226,7 +226,7 @@ GROUP BY
     u.last_name
 HAVING
     COUNT(DISTINCT r.id) >= 3
-    AND AVG(r.rating) >= 6
+    AND (AVG(r.rating) >= 6 OR AVG(r.rating) <= 8)
 ORDER BY
     average_rating DESC,
     total_likes DESC,
@@ -257,7 +257,10 @@ LEFT JOIN {genres} g ON g.id = m.genre_id
           u.first_name,
           u.last_name
    HAVING COUNT(DISTINCT r.id) >= 3
-          AND AVG(r.rating) >= 6
+          AND (
+              AVG(r.rating) >= 6
+              OR AVG(r.rating) <= 8
+          )
  ORDER BY average_rating DESC,
           total_likes DESC,
           u.username ASC
