@@ -204,8 +204,8 @@ SELECT u.firstname,
     ROUND(AVG(r.rating), 2) AS average_rating,
     SUM(r.likes) AS total_likes,
     CASE
-        WHEN AVG(r.rating) >= 8 THEN 'Excellent'
-        WHEN AVG(r.rating) >= 6 THEN 'Good'
+        WHEN AVG(r.rating) >= 8 THEN $excellentstr
+        WHEN AVG(r.rating) >= 6 THEN {$goodstring}
         ELSE 'Average'
     END AS reviewer_category
 FROM {users} u
@@ -240,8 +240,8 @@ ORDER BY
           COUNT(DISTINCT m.id) AS movie_count,
           ROUND(AVG(r.rating), 2) AS average_rating,
           SUM(r.likes) AS total_likes,
-          CASE WHEN AVG(r.rating) >= 8 THEN 'Excellent'
-               WHEN AVG(r.rating) >= 6 THEN 'Good'
+          CASE WHEN AVG(r.rating) >= 8 THEN $excellentstr
+               WHEN AVG(r.rating) >= 6 THEN {$goodstring}
                ELSE 'Average'
           END AS reviewer_category
      FROM {users} u

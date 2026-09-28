@@ -3,6 +3,8 @@ import SqlPlugin from "prettier-plugin-sql";
 
 const MDL_TABLE_PREFIX = "__MDL_PREFIX__";
 const MDL_TABLE_SUFFIX = "__MDL_SUFFIX__";
+const INTERPOLATE_VAR_PREFIX = "__VAR_PREFIX__";
+const INTERPOLATE_VAR_SUFFIX = "__VAR_SUFFIX__";
 const LINES_BETWEEN_STATEMENTS = 2;
 export const STATEMENT_SEPARATOR = `;${"\n".repeat(LINES_BETWEEN_STATEMENTS + 1)}`;
 
@@ -17,6 +19,19 @@ export const denormaliseTableNames = (value: string) => {
     return value
         .replaceAll(MDL_TABLE_PREFIX, "{")
         .replaceAll(MDL_TABLE_SUFFIX, "}");
+};
+
+const normaliseInterpolatedVariables = (value: string) => {
+    return value.replace(
+        /\{\$([0-9A-Za-z_]+)\}/g,
+        `${INTERPOLATE_VAR_PREFIX}$1${INTERPOLATE_VAR_SUFFIX}`,
+    );
+};
+
+const denormaliseInterpolatedVariables = (value: string) => {
+    return value
+        .replaceAll(INTERPOLATE_VAR_PREFIX, "{$")
+        .replaceAll(INTERPOLATE_VAR_SUFFIX, "}");
 };
 
 /**
@@ -98,6 +113,7 @@ export const dedentStatements = (value: string) => {
 
 export const format = async (value: string) => {
     value = normaliseTableNames(value);
+    value = normaliseInterpolatedVariables(value);
     value = await prettier(value, {
         parser: "sql",
         plugins: [SqlPlugin],
@@ -110,6 +126,7 @@ export const format = async (value: string) => {
     }).catch((error) =>
         error instanceof Error ? error.message : "Something went wrong",
     );
+    value = denormaliseInterpolatedVariables(value);
     value = denormaliseTableNames(value);
     value = fixCaseWhen(value);
     value = indentKeywords(value, ["AND", "OR"]);
