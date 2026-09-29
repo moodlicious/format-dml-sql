@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./index.css";
 import Editor, {
     type BeforeMount,
@@ -61,6 +61,7 @@ export function App() {
     const [formatted, setFormatted] = useState("");
     const [formatting, setFormatting] = useState(false);
     const [diff, setDiff] = useState(false);
+    const [duration, setDuration] = useState(0);
 
     const debouncedSQL = useDebounce(sql, 10);
 
@@ -69,16 +70,29 @@ export function App() {
         setSQL(value);
     };
 
-    useEffect(() => {
+    const doFormat = useCallback(async (sql: string) => {
         setFormatting(true);
-        format(debouncedSQL)
-            .then(setFormatted)
-            .finally(() => setFormatting(false));
-    }, [debouncedSQL]);
+        const start = performance.now();
+        try {
+            const formatted = await format(sql);
+            setFormatted(formatted);
+        } catch (error) {
+            setFormatted(
+                error instanceof Error ? error.message : "Something went wrong",
+            );
+        } finally {
+            setDuration(performance.now() - start);
+            setFormatting(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        doFormat(debouncedSQL);
+    }, [doFormat, debouncedSQL]);
 
     return (
-        <div className="grid h-screen max-h-screen grid-rows-[auto_1fr] gap-2 bg-base-100 p-2">
-            <div className="flex items-center justify-between rounded bg-base-200/50 px-2 py-1">
+        <div className="grid h-screen max-h-screen grid-rows-[auto_1fr_auto] gap-2 bg-base-100">
+            <div className="flex items-center justify-between bg-base-200/50 px-2 py-1">
                 <div className="flex items-center gap-3">
                     <h1 className="font-semibold">DML SQL Formatter</h1>
                     <span
@@ -99,7 +113,7 @@ export function App() {
                     Show Diff
                 </label>
             </div>
-            <div className="h-full">
+            <div className="max-h-full overflow-hidden px-2">
                 {!diff ? (
                     <div className="grid h-full grid-cols-2 gap-2">
                         <Editor
@@ -123,6 +137,11 @@ export function App() {
                         keepCurrentModifiedModel
                     />
                 )}
+            </div>
+            <div className="overflow-hidden bg-base-200/50 px-2 py-1 text-base-content/50 text-xs">
+                {formatting
+                    ? "Formatting..."
+                    : `Formatting took ${duration.toFixed(2)}ms`}
             </div>
         </div>
     );
