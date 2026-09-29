@@ -5,6 +5,7 @@ const MDL_TABLE_PREFIX = "__MDL_PREFIX__";
 const MDL_TABLE_SUFFIX = "__MDL_SUFFIX__";
 const LINES_BETWEEN_STATEMENTS = 2;
 export const STATEMENT_SEPARATOR = `;${"\n".repeat(LINES_BETWEEN_STATEMENTS + 1)}`;
+const INDENT = "    ";
 
 export const normaliseTableNames = (value: string) => {
     return value.replace(
@@ -96,6 +97,32 @@ export const dedentStatements = (value: string) => {
         .join(STATEMENT_SEPARATOR);
 };
 
+/**
+ * Hacky way to fix bracket nesting.
+ * Relies on the fact that prettier puts opening brackets on end of line,
+ * and closing brackets on its own line.
+ */
+const indentNestedBrackets = (value: string) => {
+    const lines = value.split("\n");
+    let level = 0;
+    lines.forEach((line, index, lines) => {
+        if (line.endsWith("(")) {
+            lines[index] = INDENT.repeat(level) + line;
+            level++;
+            return;
+        }
+        const trimmedLine = line.trimStart();
+        if (trimmedLine === ")" || trimmedLine === ");") {
+            level = Math.max(level - 1, 0);
+            lines[index] = INDENT.repeat(level) + line;
+            return;
+        }
+
+        lines[index] = INDENT.repeat(level) + line;
+    });
+    return lines.join("\n");
+};
+
 export const format = async (value: string) => {
     value = normaliseTableNames(value);
     value = await prettier(value, {
@@ -114,5 +141,6 @@ export const format = async (value: string) => {
     value = fixCaseWhen(value);
     value = indentKeywords(value, ["AND", "OR"]);
     value = dedentStatements(value);
+    value = indentNestedBrackets(value);
     return value;
 };
